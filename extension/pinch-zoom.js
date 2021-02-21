@@ -1,4 +1,6 @@
 /**
+EDITED FOR THE PURPOSE OF USING WITH CHROME ON LINUX
+ONLY SHIFT+SCROLL FUNCTIONALITY IMPLEMENTED
 
 Multi-touch zoom extension for Firefox
 Enables smooth pinch to zoom on desktop
@@ -17,18 +19,17 @@ Feel free to get in touch via email if you have any questions
 **/
 
 // view scaling parameters and other options
-const isMac = navigator.platform.toLowerCase().indexOf('mac') >= 0;
 const scaleMode = 1; // 0 = always high quality, 1 = low-quality while zooming
 const minScale = 1.0;
 const maxScale = 10;
-const zoomSpeedMultiplier = (isMac ? 0.015 : 0.03) / 5;
+const zoomSpeedMultiplier = 0.03 / 5;
 const overflowTimeout_ms = 400;
 const highQualityWait_ms = 40;
 const alwaysHighQuality = false;
 
 // settings
 let shiftKeyZoom = true; // enable zoom with shift + scroll by default
-let pinchZoomSpeed = 5;
+let pinchZoomSpeed = 0.7;
 let disableScrollbarsWhenZooming = false;
 
 // state
@@ -38,17 +39,10 @@ let translationY = 0;
 let overflowTranslationX = 0;
 let overflowTranslationY = 0;
 
-let touchLastCentreDistance = 0;
-let touchLastCentreX = 0;
-let touchLastCentreY = 0;
-let touchCentreChangeX = 0;
-let touchCentreChangeY = 0;
-
 // elements
 let pageElement = document.documentElement;
 let scrollBoxElement = document.documentElement; // this is the scroll-box
 let wheelEventElement = document.documentElement;
-let touchEventElement = document.documentElement;
 let scrollEventElement = window;
 
 const quirksMode = document.compatMode === 'BackCompat';
@@ -61,7 +55,7 @@ if (quirksMode) {
 }
 
 // apply user settings
-browser.storage.local.get([
+chrome.storage.local.get([
 	'mtzoom_shiftkey',
 	'mtzoom_speed',
 	'mtzoom_disableScrollbarsWhenZooming',
@@ -80,16 +74,9 @@ browser.storage.local.get([
 // browser-hint optimization - I found this causes issues with some sites like maps.google.com
 // pageElement.style.willChange = 'transform';
 
-// we track the state of the ctrl key in order to distinguish mouse-wheel events from pinch gestures
-let realCtrlDown = false;
-let updateRealCtrl = (e) => realCtrlDown = e.ctrlKey;
-window.addEventListener(`keydown`, updateRealCtrl);
-window.addEventListener(`keyup`, updateRealCtrl);
-window.addEventListener(`mousemove`, updateRealCtrl);
-
 // cmd + 0 or ctrl + 0 to restore zoom
 window.addEventListener('keydown', (e) => {
-	if (e.key == '0' && (isMac ? e.metaKey : e.ctrlKey)) {
+	if (e.key == '0' && e.ctrlKey) {
 		resetScale();
 	}
 });
@@ -108,71 +95,11 @@ function updateTranslationFromScroll(){
 		ignoredScrollTop = null;
 	}
 }
-scrollEventElement.addEventListener(`scroll`, updateTranslationFromScroll);
-
-
-touchEventElement.addEventListener(`touchmove`, (e) => {
-
-	let touchInputs = e.touches;
-	if(touchInputs.length >= 2){
-		if (e.defaultPrevented) return;
-
-		let touchCentreX = (touchInputs[0].clientX + touchInputs[touchInputs.length - 1].clientX) / 2; //gets the x position of the centre point between two inputs
-		let touchCentreY = (touchInputs[0].clientY + touchInputs[touchInputs.length - 1].clientY) / 2; //gets the y position of the centre point between two inputs
-
-		let touchCentreDistanceX = Math.max(touchInputs[0].clientX,touchInputs[touchInputs.length - 1].clientX) - touchCentreX; //gets the horizontal distance between the input and centre point
-		let touchCentreDistanceY = Math.max(touchInputs[0].clientY,touchInputs[touchInputs.length - 1].clientY) - touchCentreY; //gets the vertical distance between the input and centre point
-		let touchCentreDistance = Math.round(Math.sqrt(Math.pow(touchCentreDistanceX, 2) + Math.pow(touchCentreDistanceY, 2))); //gets the actual distance between between the input and centre point
-
-		let X = touchCentreX - scrollBoxElement.offsetLeft;
-		let Y = touchCentreY - scrollBoxElement.offsetTop;
-
-		if(touchLastCentreX == 0 && touchLastCentreY == 0){
-			touchLastCentreX = touchCentreX;
-			touchLastCentreY = touchCentreY;
-		}
-		touchCentreChangeX = touchCentreX - touchLastCentreX;
-		touchCentreChangeY = touchCentreY - touchLastCentreY;
-		touchLastCentreX = touchCentreX;
-		touchLastCentreY = touchCentreY;
-
-		let touchScaleFactor = 1; //Default scale factor
-		if(touchLastCentreDistance != 0){
-			touchScaleFactor = touchCentreDistance / touchLastCentreDistance; //gets the new factor, by which the page will be scaled.
-		}
-		touchLastCentreDistance = touchCentreDistance;
-		applyScale(touchScaleFactor, X, Y, true);
-		e.preventDefault(); //Prevent default zooming
-		e.stopPropagation();
-	}
-	else{
-		restoreControl();
-	}
-}, false);
-
-touchEventElement.addEventListener(`touchend`, (e) => {
-	touchLastCentreDistance = 0; //prevents the page from jumping around when fingers are added or removed
-	if(e.touches.length < 2){
-		// high quality render when zooming finished
-		pageElement.style.setProperty('transform', `scaleX(${pageScale}) scaleY(${pageScale})`, 'important');
-		restoreControl(); // restore scrollbars
-	}
-});
-touchEventElement.addEventListener(`touchstart`, (e) => {
-	touchLastCentreDistance = 0;
-	touchCentreChangeX = 0;
-	touchCentreChangeY = 0;
-	touchLastCentreX = 0;
-	touchLastCentreY = 0;
-});
-
+// https://github.com/rochal/jQuery-slimScroll/issues/316
+scrollEventElement.addEventListener(`scroll`, updateTranslationFromScroll, { capture: false, passive: false });
 
 wheelEventElement.addEventListener(`wheel`, (e) => {
-	// when pinching, Firefox will set the 'ctrlKey' flag to true, even when ctrl is not pressed
-	// we can use this fact to distinguish between scrolling and pinching
-	// ! it turns out this is only the case on macOS - on Windows, a ctrl key down event seems to be fired right before the wheel event...
-	let firefoxPseudoPinch = e.ctrlKey && (isMac ? !realCtrlDown : true);
-	if (firefoxPseudoPinch || (e.shiftKey && shiftKeyZoom)) {
+	if (e.shiftKey && shiftKeyZoom) {
 		if (e.defaultPrevented) return;
 
 		let x = e.clientX - scrollBoxElement.offsetLeft;
@@ -193,7 +120,7 @@ wheelEventElement.addEventListener(`wheel`, (e) => {
 		// e.preventDefault();
 		restoreControl();
 	}
-}, false);
+}, { capture: false, passive: false });
 
 scrollBoxElement.addEventListener(`mousemove`, restoreControl);
 scrollBoxElement.addEventListener(`mousedown`, restoreControl);
@@ -232,7 +159,7 @@ function restoreControl() {
 let qualityTimeoutHandle = null;
 let overflowTimeoutHandle = null;
 
-function updateTransform(scaleModeOverride, shouldDisableControl, touch) {
+function updateTransform(scaleModeOverride, shouldDisableControl) {
 	if (shouldDisableControl == null) {
 		shouldDisableControl = true;
 	}
@@ -252,16 +179,10 @@ function updateTransform(scaleModeOverride, shouldDisableControl, touch) {
 		// wait a short period before restoring the quality
 		// we use a timeout for trackpad because we can't detect when the user has finished the gesture on the hardware
 		// we can only detect gesture update events ('wheel' + ctrl)
-		if(touch != true){ //prevents this from occuring when using touchscreen
-			window.clearTimeout(qualityTimeoutHandle);
-			qualityTimeoutHandle = setTimeout(function(){
-				pageElement.style.setProperty('transform', `scaleX(${pageScale}) scaleY(${pageScale})`, 'important');
-			}, highQualityWait_ms);
-		}
-	}
-	if(touch == true){
-		scrollBoxElement.scrollLeft -= touchCentreChangeX * pageScale;
-		scrollBoxElement.scrollTop -= touchCentreChangeY * pageScale;
+        window.clearTimeout(qualityTimeoutHandle);
+        qualityTimeoutHandle = setTimeout(function(){
+        pageElement.style.setProperty('transform', `scaleX(${pageScale}) scaleY(${pageScale})`, 'important');
+        }, highQualityWait_ms);
 	}
 
 	pageElement.style.setProperty('transform-origin', '0 0', 'important');
@@ -283,16 +204,14 @@ function updateTransform(scaleModeOverride, shouldDisableControl, touch) {
 
 	if (shouldDisableControl) {
 		disableControl();
-		if(touch != true){
-			clearTimeout(overflowTimeoutHandle);
-			overflowTimeoutHandle = setTimeout(function(){
-				restoreControl();
-			}, overflowTimeout_ms);
-		}
+		clearTimeout(overflowTimeoutHandle);
+		overflowTimeoutHandle = setTimeout(function(){
+			restoreControl();
+		}, overflowTimeout_ms);
 	}
 }
 
-function applyScale(scaleBy, x_scrollBoxElement, y_scrollBoxElement, touch) {
+function applyScale(scaleBy, x_scrollBoxElement, y_scrollBoxElement) {
 	// x/y coordinates in untransformed coordinates relative to the scroll container
 	// if the container is the window, then the coordinates are relative to the window
 	// ignoring any scroll offset. The coordinates do not change as the page is transformed
@@ -303,7 +222,7 @@ function applyScale(scaleBy, x_scrollBoxElement, y_scrollBoxElement, touch) {
 		// clamp v to scroll range
 		// this limits minScale to 1
 		v = Math.min(v, 0);
-		v = Math.max(v, -scrollBoxElement.scrollLeftMax);
+		v = Math.max(v, -(scrollBoxElement.scrollWidth - scrollBoxElement.clientWidth));
 
 		translationX = v;
 
@@ -312,20 +231,20 @@ function applyScale(scaleBy, x_scrollBoxElement, y_scrollBoxElement, touch) {
 
 		// scroll-transform what we're unable to apply
 		// either there is no scroll-bar or we want to scroll past the end
-		overflowTranslationX = v < 0 ? Math.max((-v) - scrollBoxElement.scrollLeftMax, 0) : 0;
+		overflowTranslationX = v < 0 ? Math.max((-v) - (scrollBoxElement.scrollWidth - scrollBoxElement.clientWidth), 0) : 0;
 	}
 	function setTranslationY(v) {
 		// clamp v to scroll range
 		// this limits minScale to 1
 		v = Math.min(v, 0);
-		v = Math.max(v, -scrollBoxElement.scrollTopMax);
+		v = Math.max(v, -(scrollBoxElement.scrollHeight - scrollBoxElement.clientHeight));
 
 		translationY = v;
 
 		scrollBoxElement.scrollTop = Math.max(-v, 0);
 		ignoredScrollTop = scrollBoxElement.scrollTop;
 
-		overflowTranslationY = v < 0 ? Math.max((-v) - scrollBoxElement.scrollTopMax, 0) : 0;
+		overflowTranslationY = v < 0 ? Math.max((-v) - (scrollBoxElement.scrollHeight - scrollBoxElement.clientHeight), 0) : 0;
 	}
 
 	// resize pageElement
@@ -337,8 +256,9 @@ function applyScale(scaleBy, x_scrollBoxElement, y_scrollBoxElement, touch) {
 	// when we hit min/max scale we can early exit
 	if (effectiveScale === 1) return;
 
-	updateTransform(null, null, touch);
-
+	updateTransform(null, null);
+    
+    //zx and zy are the absolute coordinates of the mouse on the screen
 	let zx = x_scrollBoxElement;
 	let zy = y_scrollBoxElement;
 
@@ -353,7 +273,7 @@ function applyScale(scaleBy, x_scrollBoxElement, y_scrollBoxElement, touch) {
 	setTranslationX(tx);
 	setTranslationY(ty);
 
-	updateTransform(null, null, touch);
+	updateTransform(null, null);
 }
 
 function resetScale() {
@@ -367,12 +287,12 @@ function resetScale() {
 	let scrollLeftBefore = scrollBoxElement.scrollLeft;
 	let scrollLeftMaxBefore = scrollBoxElement.scrollMax;
 	let scrollTopBefore = scrollBoxElement.scrollTop;
-	let scrollTopMaxBefore = scrollBoxElement.scrollTopMax;
+	let scrollTopMaxBefore = (scrollBoxElement.scrollHeight - scrollBoxElement.clientHeight);
 	updateTransform(0, false, false);
 
 	// restore scroll
-	scrollBoxElement.scrollLeft = (scrollLeftBefore/scrollLeftMaxBefore) * scrollBoxElement.scrollLeftMax;
-	scrollBoxElement.scrollTop = (scrollTopBefore/scrollTopMaxBefore) * scrollBoxElement.scrollTopMax;
+	scrollBoxElement.scrollLeft = (scrollLeftBefore/scrollLeftMaxBefore) * (scrollBoxElement.scrollWidth - scrollBoxElement.clientWidth);
+	scrollBoxElement.scrollTop = (scrollTopBefore/scrollTopMaxBefore) * (scrollBoxElement.scrollHeight - scrollBoxElement.clientHeight);
 
 	updateTranslationFromScroll();
 

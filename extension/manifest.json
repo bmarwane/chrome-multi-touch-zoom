@@ -2,19 +2,16 @@
 	"manifest_version": 2,
 	"name": "Multi-touch Zoom",
 	"version": "0.95",
-	"applications": {
-		"gecko": {
-			"id": "{90b5a72e-cdbd-49df-8304-5b5d6ea84a0f}",
-			"strict_min_version": "57.0"
-		}
-	},
+	// gecko stores browser specific things, no need for it using chrome
+	//"applications": {
+	//	"gecko": {
+	//		"id": "{90b5a72e-cdbd-49df-8304-5b5d6ea84a0f}",
+	//		"strict_min_version": "57.0"
+	//	}
+	//},
 
 	"description": "Adds smooth multi-touch zoom that matches the behavior in Safari and Chrome",
 
-	"developer": {
-		"name": "George Corney",
-		"url": "https://github.com/haxiomic"
-	},
 
 	"icons": {
 		"48": "icons/icon-48.png",
@@ -29,11 +26,11 @@
 	}],
 
 	"permissions": [
-		"storage"
+		"storage",
+        "debugger"
 	],
 
 	"options_ui": {
-		"page": "settings.html",
-		"browser_style": true
+		"page": "settings.html"
 	}
 }
