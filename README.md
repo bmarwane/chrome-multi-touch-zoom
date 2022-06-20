@@ -1,5 +1,15 @@
-Fork of https://github.com/haxiomic/firefox-multi-touch-zoom
+This is a fork of: https://github.com/NayamAmarshe/firefox-multi-touch-zoom
 
-made (somewhat) compatible with Chrome, although it does have its own issues.
+I added a simple way support mouse movement during zoom by pressing SHIFT key and moving the mouse.
 
-I don't plan to support and update this "port", feel free to use and improve it.
+Just like NayamAmarshe i do not plan to actively support this extension, feel free to use the code if you want to.
+
+# How to use
+
+**Zoom in / out**
+
+Use Shift + 2-finger-swipe up/down to use smooth-zooming.
+
+**When zoomed in**
+
+Press Shift to enable to move the viewport using the mouse.

@@ -27,6 +27,10 @@ const overflowTimeout_ms = 400;
 const highQualityWait_ms = 40;
 const alwaysHighQuality = false;
 
+let horizontalOriginShift = 0; // > 0 to the right,  < 0 to the left
+let verticalOriginShift = 0; // > 0 down, < 0 up
+let originMoveRate = 10;
+
 // settings
 let shiftKeyZoom = true; // enable zoom with shift + scroll by default
 let pinchZoomSpeed = 0.7;
@@ -74,11 +78,40 @@ chrome.storage.local.get([
 // browser-hint optimization - I found this causes issues with some sites like maps.google.com
 // pageElement.style.willChange = 'transform';
 
+
+let mouseX, mouseY;
+let shoudFollowMouse = false;
+let canFollowMouse = false;
+
+
+document.onmousemove = (e) => {
+  if(!canFollowMouse) return;
+  if (shoudFollowMouse && mouseX && mouseY) {
+    //window.scrollBy(e.clientX - mouseX, e.clientY - mouseY);
+    horizontalOriginShift+= e.clientX - mouseX;
+    verticalOriginShift+= e.clientY - mouseY;
+
+    pageElement.style.setProperty('transform-origin', `${horizontalOriginShift}px ${verticalOriginShift}px`, 'important');
+  }
+
+  // Store current position
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+};
+
+
 // cmd + 0 or ctrl + 0 to restore zoom
 window.addEventListener('keydown', (e) => {
 	if (e.key == '0' && e.ctrlKey) {
 		resetScale();
+    return;
 	}
+
+  shoudFollowMouse = !!e.shiftKey;
+});
+
+window.addEventListener('keyup', (e) => {
+  shoudFollowMouse = !!e.shiftKey;
 });
 
 // because scroll top/left are handled as integers only, we only read the translation from scroll once scroll has changed
@@ -185,7 +218,7 @@ function updateTransform(scaleModeOverride, shouldDisableControl) {
         }, highQualityWait_ms);
 	}
 
-	pageElement.style.setProperty('transform-origin', '0 0', 'important');
+	pageElement.style.setProperty('transform-origin', `${horizontalOriginShift}px ${verticalOriginShift}px`, 'important');
 
 	// hack to restore normal behavior that's upset after applying the transform
 	pageElement.style.position = `relative`;
@@ -253,11 +286,22 @@ function applyScale(scaleBy, x_scrollBoxElement, y_scrollBoxElement) {
 	pageScale = Math.min(Math.max(pageScale, minScale), maxScale);
 	let effectiveScale = pageScale/pageScaleBefore;
 
+  if(pageScale === 1) {
+    canFollowMouse = false;
+  } else {
+    canFollowMouse = true;
+  }
+
+  if(pageScale === 1 && (horizontalOriginShift || verticalOriginShift)) {
+    horizontalOriginShift = 0;
+    verticalOriginShift = 0;
+  }
+
 	// when we hit min/max scale we can early exit
 	if (effectiveScale === 1) return;
 
 	updateTransform(null, null);
-    
+
     //zx and zy are the absolute coordinates of the mouse on the screen
 	let zx = x_scrollBoxElement;
 	let zy = y_scrollBoxElement;
@@ -283,6 +327,8 @@ function resetScale() {
 	translationY = 0;
 	overflowTranslationX = 0;
 	overflowTranslationY = 0;
+  horizontalOriginShift = 0;
+  verticalOriginShift = 0;
 
 	let scrollLeftBefore = scrollBoxElement.scrollLeft;
 	let scrollLeftMaxBefore = scrollBoxElement.scrollMax;
