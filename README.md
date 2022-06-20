@@ -4,7 +4,7 @@ This is a fork of: https://github.com/NayamAmarshe/firefox-multi-touch-zoom
 
 I added a simple way support mouse movement during zoom by pressing SHIFT key and moving the mouse.
 
-Just like NayamAmarshe i do not plan to actively support this extension.
+I do not plan to actively support this extension.
 
 # Installation
 
