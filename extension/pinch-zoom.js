@@ -45,17 +45,13 @@ let overflowTranslationY = 0;
 
 // elements
 let pageElement = document.documentElement;
-let scrollBoxElement = document.documentElement; // this is the scroll-box
 let wheelEventElement = document.documentElement;
 let scrollEventElement = window;
 
 const quirksMode = document.compatMode === 'BackCompat';
 
-// if the pageElement is missing a doctype or the doctype is set to < HTML 4.01 then Firefox renders in quirks mode
-// we cannot use the scroll fields on the <html> element, instead we must use the body
-// "(quirks mode bug 211030) The scrollLeft, scrollTop, scrollWidth, and scrollHeight properties are relative to BODY in quirks mode (instead of HTML)."
-if (quirksMode) {
-	scrollBoxElement = document.body;
+function getScrollBoxElement() {
+  return document.documentElement || document.body;
 }
 
 // apply user settings
@@ -119,12 +115,12 @@ window.addEventListener('keyup', (e) => {
 let ignoredScrollLeft = null;
 let ignoredScrollTop = null;
 function updateTranslationFromScroll(){
-	if (scrollBoxElement.scrollLeft !== ignoredScrollLeft) {
-		translationX = -scrollBoxElement.scrollLeft;
+	if (getScrollBoxElement().scrollLeft !== ignoredScrollLeft) {
+		translationX = -getScrollBoxElement().scrollLeft;
 		ignoredScrollLeft = null;
 	}
-	if (scrollBoxElement.scrollTop !== ignoredScrollTop) {
-		translationY = -scrollBoxElement.scrollTop;
+	if (getScrollBoxElement().scrollTop !== ignoredScrollTop) {
+		translationY = -getScrollBoxElement().scrollTop;
 		ignoredScrollTop = null;
 	}
 }
@@ -135,8 +131,8 @@ wheelEventElement.addEventListener(`wheel`, (e) => {
 	if (e.shiftKey && shiftKeyZoom) {
 		if (e.defaultPrevented) return;
 
-		let x = e.clientX - scrollBoxElement.offsetLeft;
-		let y = e.clientY - scrollBoxElement.offsetTop;
+		let x = e.clientX - getScrollBoxElement().offsetLeft;
+		let y = e.clientY - getScrollBoxElement().offsetTop;
 		// x in non-scrolling, non-transformed coordinates relative to the scrollBoxElement
 		// 0 is always the left side and <width> is always the right side
 
@@ -155,8 +151,8 @@ wheelEventElement.addEventListener(`wheel`, (e) => {
 	}
 }, { capture: false, passive: false });
 
-scrollBoxElement.addEventListener(`mousemove`, restoreControl);
-scrollBoxElement.addEventListener(`mousedown`, restoreControl);
+getScrollBoxElement().addEventListener(`mousemove`, restoreControl);
+getScrollBoxElement().addEventListener(`mousedown`, restoreControl);
 
 let controlDisabled = false;
 function disableControl() {
@@ -255,29 +251,29 @@ function applyScale(scaleBy, x_scrollBoxElement, y_scrollBoxElement) {
 		// clamp v to scroll range
 		// this limits minScale to 1
 		v = Math.min(v, 0);
-		v = Math.max(v, -(scrollBoxElement.scrollWidth - scrollBoxElement.clientWidth));
+		v = Math.max(v, -(getScrollBoxElement().scrollWidth - getScrollBoxElement().clientWidth));
 
 		translationX = v;
 
-		scrollBoxElement.scrollLeft = Math.max(-v, 0);
-		ignoredScrollLeft = scrollBoxElement.scrollLeft;
+		getScrollBoxElement().scrollLeft = Math.max(-v, 0);
+		ignoredScrollLeft = getScrollBoxElement().scrollLeft;
 
 		// scroll-transform what we're unable to apply
 		// either there is no scroll-bar or we want to scroll past the end
-		overflowTranslationX = v < 0 ? Math.max((-v) - (scrollBoxElement.scrollWidth - scrollBoxElement.clientWidth), 0) : 0;
+		overflowTranslationX = v < 0 ? Math.max((-v) - (getScrollBoxElement().scrollWidth - getScrollBoxElement().clientWidth), 0) : 0;
 	}
 	function setTranslationY(v) {
 		// clamp v to scroll range
 		// this limits minScale to 1
 		v = Math.min(v, 0);
-		v = Math.max(v, -(scrollBoxElement.scrollHeight - scrollBoxElement.clientHeight));
+		v = Math.max(v, -(getScrollBoxElement().scrollHeight - getScrollBoxElement().clientHeight));
 
 		translationY = v;
 
-		scrollBoxElement.scrollTop = Math.max(-v, 0);
-		ignoredScrollTop = scrollBoxElement.scrollTop;
+		getScrollBoxElement().scrollTop = Math.max(-v, 0);
+		ignoredScrollTop = getScrollBoxElement().scrollTop;
 
-		overflowTranslationY = v < 0 ? Math.max((-v) - (scrollBoxElement.scrollHeight - scrollBoxElement.clientHeight), 0) : 0;
+		overflowTranslationY = v < 0 ? Math.max((-v) - (getScrollBoxElement().scrollHeight - getScrollBoxElement().clientHeight), 0) : 0;
 	}
 
 	// resize pageElement
@@ -330,15 +326,15 @@ function resetScale() {
   horizontalOriginShift = 0;
   verticalOriginShift = 0;
 
-	let scrollLeftBefore = scrollBoxElement.scrollLeft;
-	let scrollLeftMaxBefore = scrollBoxElement.scrollMax;
-	let scrollTopBefore = scrollBoxElement.scrollTop;
-	let scrollTopMaxBefore = (scrollBoxElement.scrollHeight - scrollBoxElement.clientHeight);
+	let scrollLeftBefore = getScrollBoxElement().scrollLeft;
+	let scrollLeftMaxBefore = getScrollBoxElement().scrollMax;
+	let scrollTopBefore = getScrollBoxElement().scrollTop;
+	let scrollTopMaxBefore = (getScrollBoxElement().scrollHeight - getScrollBoxElement().clientHeight);
 	updateTransform(0, false, false);
 
 	// restore scroll
-	scrollBoxElement.scrollLeft = (scrollLeftBefore/scrollLeftMaxBefore) * (scrollBoxElement.scrollWidth - scrollBoxElement.clientWidth);
-	scrollBoxElement.scrollTop = (scrollTopBefore/scrollTopMaxBefore) * (scrollBoxElement.scrollHeight - scrollBoxElement.clientHeight);
+	getScrollBoxElement().scrollLeft = (scrollLeftBefore/scrollLeftMaxBefore) * (getScrollBoxElement().scrollWidth - getScrollBoxElement().clientWidth);
+	getScrollBoxElement().scrollTop = (scrollTopBefore/scrollTopMaxBefore) * (getScrollBoxElement().scrollHeight - getScrollBoxElement().clientHeight);
 
 	updateTranslationFromScroll();
 
