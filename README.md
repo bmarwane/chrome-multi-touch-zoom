@@ -8,7 +8,7 @@ I do not plan to actively support this extension.
 
 # Installation
 
-- clone this repo or [download and the code](https://github.com/bmarwane/chrome-multi-touch-zoom/archive/refs/heads/master.zip)
+- clone this repo or [download the code](https://github.com/bmarwane/chrome-multi-touch-zoom/archive/refs/heads/master.zip)
 
 - Open the extensions page
 - Turn on Developer Mode
