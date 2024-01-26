@@ -1,8 +1,7 @@
 const scaleMode = 1;
 const minScale = 1.0;
 const maxScale = 10;
-const touchpadZoomSpeedMultiplier = 0.03 / 5; // Touchpad zoom speed multiplier
-const keyboardZoomSpeedMultiplier = 0.1; // Keyboard zoom speed multiplier
+const zoomSpeedMultiplier = 0.03 / 5;
 const overflowTimeout_ms = 400;
 const highQualityWait_ms = 40;
 const alwaysHighQuality = false;
@@ -13,7 +12,7 @@ let originMoveRate = 10;
 
 let shiftKeyZoom = true;
 let pinchZoomSpeed = 0.7;
-let disableScrollbarsWhenZooming = false;
+let disableScrollbarsWhenZooming = true;
 
 let pageScale = 1;
 let translationX = 0;
@@ -54,6 +53,30 @@ window.addEventListener('keydown', (e) => {
   }
 
   shouldFollowMouse = !!e.shiftKey;
+
+  // Zoom in with Numpad Plus
+  if (e.shiftKey && e.keyCode === 109) {
+    let x = window.innerWidth / 2;
+    let y = window.innerHeight / 2;
+    let deltaMultiplier = pinchZoomSpeed * zoomSpeedMultiplier;
+    let newScale = pageScale + deltaMultiplier;
+    let scaleBy = pageScale / newScale;
+    applyScale(scaleBy, x, y);
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  // Zoom out with Numpad Minus
+  if (e.shiftKey && e.keyCode === 107) {
+    let x = window.innerWidth / 2;
+    let y = window.innerHeight / 2;
+    let deltaMultiplier = pinchZoomSpeed * zoomSpeedMultiplier;
+    let newScale = pageScale - deltaMultiplier;
+    let scaleBy = pageScale / newScale;
+    applyScale(scaleBy, x, y);
+    e.preventDefault();
+    e.stopPropagation();
+  }
 });
 
 window.addEventListener('keyup', (e) => {
@@ -81,7 +104,7 @@ wheelEventElement.addEventListener(`wheel`, (e) => {
     if (e.defaultPrevented) return;
     let x = e.clientX - getScrollBoxElement().offsetLeft;
     let y = e.clientY - getScrollBoxElement().offsetTop;
-    let deltaMultiplier = pinchZoomSpeed * touchpadZoomSpeedMultiplier;
+    let deltaMultiplier = pinchZoomSpeed * zoomSpeedMultiplier;
     let newScale = pageScale + e.deltaY * deltaMultiplier;
     let scaleBy = pageScale / newScale;
     applyScale(scaleBy, x, y);
@@ -233,29 +256,3 @@ function resetScale() {
 
   pageElement.style.overflow = '';
 }
-
-window.addEventListener('keydown', (e) => {
-  if (e.shiftKey) {
-    // Zoom in with Numpad Plus
-    if (e.keyCode === 109) {
-      let x = window.innerWidth / 2;
-      let y = window.innerHeight / 2;
-      let newScale = pageScale + keyboardZoomSpeedMultiplier;
-      let scaleBy = pageScale / newScale;
-      applyScale(scaleBy, x, y);
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    // Zoom out with Numpad Minus
-    if (e.keyCode === 107) {
-      let x = window.innerWidth / 2;
-      let y = window.innerHeight / 2;
-      let newScale = pageScale - keyboardZoomSpeedMultiplier;
-      let scaleBy = pageScale / newScale;
-      applyScale(scaleBy, x, y);
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }
-});
