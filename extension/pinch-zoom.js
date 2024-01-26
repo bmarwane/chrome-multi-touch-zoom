@@ -6,6 +6,7 @@ const zoomSpeedMultiplier = 0.03 / 5;
 const overflowTimeout_ms = 400;
 const highQualityWait_ms = 40;
 const alwaysHighQuality = false;
+const KeyboardZoomMultiplier = 100;
 
 let horizontalOriginShift = 0; // > 0 to the right,  < 0 to the left
 let verticalOriginShift = 0; // > 0 down, < 0 up
@@ -13,7 +14,7 @@ let originMoveRate = 10;
 
 // settings
 let shiftKeyZoom = true; // enable zoom with shift + scroll by default
-let pinchZoomSpeed = 0.7;
+let pinchZoomSpeed = 0.5;
 let disableScrollbarsWhenZooming = false;
 
 // state
@@ -64,11 +65,11 @@ window.addEventListener('keydown', (e) => {
     if (e.shiftKey && e.keyCode === 107) {
         // Handle zoom in
         e.preventDefault();
-        zoomIn();
+        zoomIn(KeyboardZoomMultiplier);
     } else if (e.shiftKey && e.keyCode === 109) {
         // Handle zoom out
         e.preventDefault();
-        zoomOut();
+        zoomOut(KeyboardZoomMultiplier);
     } else {
         shouldFollowMouse = !!e.shiftKey;
     }
@@ -209,8 +210,8 @@ function applyScale(scaleBy, x, y) {
     updateTransform(null, null);
 }
 
-function zoomIn() {
-    let deltaMultiplier = pinchZoomSpeed * zoomSpeedMultiplier;
+function zoomIn(speedMultiplier) {
+    let deltaMultiplier = pinchZoomSpeed * zoomSpeedMultiplier * speedMultiplier;
     let x = mouseX;
     let y = mouseY;
     let newScale = pageScale - deltaMultiplier;
@@ -218,8 +219,8 @@ function zoomIn() {
     applyScale(scaleBy, x, y);
 }
 
-function zoomOut() {
-    let deltaMultiplier = pinchZoomSpeed * zoomSpeedMultiplier;
+function zoomOut(speedMultiplier) {
+    let deltaMultiplier = pinchZoomSpeed * zoomSpeedMultiplier * speedMultiplier;
     let x = mouseX;
     let y = mouseY;
     let newScale = pageScale + deltaMultiplier;
