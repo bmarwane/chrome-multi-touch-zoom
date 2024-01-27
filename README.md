@@ -2,7 +2,7 @@
 
 This is a fork of: https://github.com/bmarwane/chrome-multi-touch-zoom
 
-I just updated the extension to work with manifest v3 and v2 is going to be deprecated soon!
+I just updated the extension to work with manifest v3 as v2 is going to be deprecated soon!
 
 # Installation
 
