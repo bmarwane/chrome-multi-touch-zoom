@@ -37,14 +37,10 @@ let canFollowMouse = false;
 
 document.onmousemove = (e) => {
   if (!canFollowMouse) return;
-  if (shouldFollowMouse && mouseX && mouseY) {
-    horizontalOriginShift += e.clientX - mouseX;
-    verticalOriginShift += e.clientY - mouseY;
-    pageElement.style.setProperty('transform-origin', `${horizontalOriginShift}px ${verticalOriginShift}px`, 'important');
+  if (shouldFollowMouse) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
   }
-
-  mouseX = e.clientX;
-  mouseY = e.clientY;
 };
 
 window.addEventListener('keydown', (e) => {
@@ -238,8 +234,8 @@ window.addEventListener('keydown', (e) => {
   if (e.shiftKey) {
     // Zoom in with Numpad Plus
     if (e.keyCode === 109) {
-      let x = window.innerWidth / 2;
-      let y = window.innerHeight / 2;
+      let x = mouseX != null ? mouseX : window.innerWidth / 2;
+      let y = mouseY != null ? mouseY : window.innerHeight / 2;
       let newScale = pageScale + keyboardZoomSpeedMultiplier;
       let scaleBy = pageScale / newScale;
       applyScale(scaleBy, x, y);
@@ -249,8 +245,8 @@ window.addEventListener('keydown', (e) => {
 
     // Zoom out with Numpad Minus
     if (e.keyCode === 107) {
-      let x = window.innerWidth / 2;
-      let y = window.innerHeight / 2;
+      let x = mouseX != null ? mouseX : window.innerWidth / 2;
+      let y = mouseY != null ? mouseY : window.innerHeight / 2;
       let newScale = pageScale - keyboardZoomSpeedMultiplier;
       let scaleBy = pageScale / newScale;
       applyScale(scaleBy, x, y);
