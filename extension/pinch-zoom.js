@@ -1,8 +1,7 @@
 const scaleMode = 1;
 const minScale = 1.0;
 const maxScale = 10;
-const touchpadZoomSpeedMultiplier = 0.03 / 5; // Touchpad zoom speed multiplier
-const keyboardZoomSpeedMultiplier = 0.1; // Keyboard zoom speed multiplier
+const zoomSpeedMultiplier = 0.03 / 5;
 const overflowTimeout_ms = 400;
 const highQualityWait_ms = 40;
 const alwaysHighQuality = false;
@@ -31,16 +30,37 @@ function getScrollBoxElement() {
   return document.documentElement || document.body;
 }
 
+chrome.storage.local.get([
+  'mtzoom_shiftkey',
+  'mtzoom_speed',
+  'mtzoom_disableScrollbarsWhenZooming',
+], function (res) {
+  if (res.mtzoom_shiftkey != null) {
+    shiftKeyZoom = res.mtzoom_shiftkey;
+  }
+  if (res.mtzoom_speed != null) {
+    pinchZoomSpeed = res.mtzoom_speed;
+  }
+  if (res.mtzoom_disableScrollbarsWhenZooming != null) {
+    disableScrollbarsWhenZooming = res.mtzoom_disableScrollbarsWhenZooming;
+  }
+});
+
 let mouseX, mouseY;
-let shouldFollowMouse = false;
+let shoudFollowMouse = false;
 let canFollowMouse = false;
 
 document.onmousemove = (e) => {
   if (!canFollowMouse) return;
-  if (shouldFollowMouse) {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
+  if (shoudFollowMouse && mouseX && mouseY) {
+    horizontalOriginShift += e.clientX - mouseX;
+    verticalOriginShift += e.clientY - mouseY;
+
+    pageElement.style.setProperty('transform-origin', `${horizontalOriginShift}px ${verticalOriginShift}px`, 'important');
   }
+
+  mouseX = e.clientX;
+  mouseY = e.clientY;
 };
 
 window.addEventListener('keydown', (e) => {
@@ -49,17 +69,16 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  shouldFollowMouse = !!e.shiftKey;
+  shoudFollowMouse = !!e.shiftKey;
 });
 
 window.addEventListener('keyup', (e) => {
-  shouldFollowMouse = !!e.shiftKey;
+  shoudFollowMouse = !!e.shiftKey;
 });
 
 let ignoredScrollLeft = null;
 let ignoredScrollTop = null;
-
-function updateTranslationFromScroll() {
+function updateTranslationFromScroll(){
   if (getScrollBoxElement().scrollLeft !== ignoredScrollLeft) {
     translationX = -getScrollBoxElement().scrollLeft;
     ignoredScrollLeft = null;
@@ -69,18 +88,22 @@ function updateTranslationFromScroll() {
     ignoredScrollTop = null;
   }
 }
-
 scrollEventElement.addEventListener(`scroll`, updateTranslationFromScroll, { capture: false, passive: false });
 
 wheelEventElement.addEventListener(`wheel`, (e) => {
   if (e.shiftKey && shiftKeyZoom) {
     if (e.defaultPrevented) return;
+
     let x = e.clientX - getScrollBoxElement().offsetLeft;
     let y = e.clientY - getScrollBoxElement().offsetTop;
-    let deltaMultiplier = pinchZoomSpeed * touchpadZoomSpeedMultiplier;
+
+    let deltaMultiplier = pinchZoomSpeed * zoomSpeedMultiplier;
+
     let newScale = pageScale + e.deltaY * deltaMultiplier;
-    let scaleBy = pageScale / newScale;
-    applyScale(scaleBy, x, y);
+    let scaleBy = pageScale/newScale;
+
+    applyScale(scaleBy, x, y, false);
+
     e.preventDefault();
     e.stopPropagation();
   } else {
@@ -92,14 +115,15 @@ getScrollBoxElement().addEventListener(`mousemove`, restoreControl);
 getScrollBoxElement().addEventListener(`mousedown`, restoreControl);
 
 let controlDisabled = false;
-
 function disableControl() {
   if (controlDisabled) return;
 
   if (disableScrollbarsWhenZooming) {
     let verticalScrollBarWidth = window.innerWidth - pageElement.clientWidth;
     let horizontalScrollBarWidth = window.innerHeight - pageElement.clientHeight;
+
     pageElement.style.setProperty('overflow', 'hidden', 'important');
+
     pageElement.style.setProperty('margin-right', verticalScrollBarWidth + 'px', 'important');
     pageElement.style.setProperty('margin-bottom', horizontalScrollBarWidth + 'px', 'important');
   }
@@ -109,9 +133,11 @@ function disableControl() {
 
 function restoreControl() {
   if (!controlDisabled) return;
+
   pageElement.style.overflow = 'auto';
   pageElement.style.marginRight = '';
   pageElement.style.marginBottom = '';
+
   controlDisabled = false;
 }
 
@@ -129,53 +155,63 @@ function updateTransform(scaleModeOverride, shouldDisableControl) {
     pageElement.style.setProperty('transform', `scaleX(${pageScale}) scaleY(${pageScale})`, 'important');
   } else {
     let p = 1;
-    let z = p - p / pageScale;
+    let z = p - p/pageScale;
+
     pageElement.style.setProperty('transform', `perspective(${p}px) translateZ(${z}px)`, 'important');
+
     window.clearTimeout(qualityTimeoutHandle);
-    qualityTimeoutHandle = setTimeout(function () {
+    qualityTimeoutHandle = setTimeout(function(){
       pageElement.style.setProperty('transform', `scaleX(${pageScale}) scaleY(${pageScale})`, 'important');
     }, highQualityWait_ms);
   }
 
   pageElement.style.setProperty('transform-origin', `${horizontalOriginShift}px ${verticalOriginShift}px`, 'important');
+
   pageElement.style.position = `relative`;
   pageElement.style.height = `100%`;
+
   pageElement.style.transitionProperty = `transform, left, top`;
   pageElement.style.transitionDuration = `0s`;
 
   if (shouldDisableControl) {
     disableControl();
     clearTimeout(overflowTimeoutHandle);
-    overflowTimeoutHandle = setTimeout(function () {
+    overflowTimeoutHandle = setTimeout(function(){
       restoreControl();
     }, overflowTimeout_ms);
   }
 }
 
 function applyScale(scaleBy, x_scrollBoxElement, y_scrollBoxElement) {
-  function getTranslationX() { return translationX; }
-  function getTranslationY() { return translationY; }
+  function getTranslationX(){ return translationX; }
+  function getTranslationY(){ return translationY; }
   function setTranslationX(v) {
     v = Math.min(v, 0);
     v = Math.max(v, -(getScrollBoxElement().scrollWidth - getScrollBoxElement().clientWidth));
+
     translationX = v;
+
     getScrollBoxElement().scrollLeft = Math.max(-v, 0);
     ignoredScrollLeft = getScrollBoxElement().scrollLeft;
+
     overflowTranslationX = v < 0 ? Math.max((-v) - (getScrollBoxElement().scrollWidth - getScrollBoxElement().clientWidth), 0) : 0;
   }
   function setTranslationY(v) {
     v = Math.min(v, 0);
     v = Math.max(v, -(getScrollBoxElement().scrollHeight - getScrollBoxElement().clientHeight));
+
     translationY = v;
+
     getScrollBoxElement().scrollTop = Math.max(-v, 0);
     ignoredScrollTop = getScrollBoxElement().scrollTop;
+
     overflowTranslationY = v < 0 ? Math.max((-v) - (getScrollBoxElement().scrollHeight - getScrollBoxElement().clientHeight), 0) : 0;
   }
 
   let pageScaleBefore = pageScale;
   pageScale *= scaleBy;
   pageScale = Math.min(Math.max(pageScale, minScale), maxScale);
-  let effectiveScale = pageScale / pageScaleBefore;
+  let effectiveScale = pageScale/pageScaleBefore;
 
   if (pageScale === 1) {
     canFollowMouse = false;
@@ -222,36 +258,10 @@ function resetScale() {
   let scrollTopMaxBefore = (getScrollBoxElement().scrollHeight - getScrollBoxElement().clientHeight);
   updateTransform(0, false, false);
 
-  getScrollBoxElement().scrollLeft = (scrollLeftBefore / scrollLeftMaxBefore) * (getScrollBoxElement().scrollWidth - getScrollBoxElement().clientWidth);
-  getScrollBoxElement().scrollTop = (scrollTopBefore / scrollTopMaxBefore) * (getScrollBoxElement().scrollHeight - getScrollBoxElement().clientHeight);
+  getScrollBoxElement().scrollLeft = (scrollLeftBefore/scrollLeftMaxBefore) * (getScrollBoxElement().scrollWidth - getScrollBoxElement().clientWidth);
+  getScrollBoxElement().scrollTop = (scrollTopBefore/scrollTopMaxBefore) * (getScrollBoxElement().scrollHeight - getScrollBoxElement().clientHeight);
 
   updateTranslationFromScroll();
 
   pageElement.style.overflow = '';
 }
-
-window.addEventListener('keydown', (e) => {
-  if (e.shiftKey) {
-    // Zoom in with Numpad Plus
-    if (e.keyCode === 109) {
-      let x = mouseX != null ? mouseX : window.innerWidth / 2;
-      let y = mouseY != null ? mouseY : window.innerHeight / 2;
-      let newScale = pageScale + keyboardZoomSpeedMultiplier;
-      let scaleBy = pageScale / newScale;
-      applyScale(scaleBy, x, y);
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    // Zoom out with Numpad Minus
-    if (e.keyCode === 107) {
-      let x = mouseX != null ? mouseX : window.innerWidth / 2;
-      let y = mouseY != null ? mouseY : window.innerHeight / 2;
-      let newScale = pageScale - keyboardZoomSpeedMultiplier;
-      let scaleBy = pageScale / newScale;
-      applyScale(scaleBy, x, y);
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }
-});
