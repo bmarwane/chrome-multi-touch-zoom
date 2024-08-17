@@ -1,15 +1,12 @@
 # About
 
-This is a fork of: https://github.com/NayamAmarshe/firefox-multi-touch-zoom
+This is a fork of: https://github.com/bmarwane/chrome-multi-touch-zoom
 
-I added a simple way to support mouse movement when zoomed-in by pressing SHIFT key and moving the mouse.
-
-I do not plan to actively support this extension.
+I just updated the extension to work with manifest v3 as v2 is going to be deprecated soon!
 
 # Installation
 
-- clone this repo or [download the code](https://github.com/bmarwane/chrome-multi-touch-zoom/archive/refs/heads/master.zip)
-
+- clone this repo
 - Open the extensions page
 - Turn on Developer Mode
 - Press 'Load Unpacked' button.
